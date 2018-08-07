@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Test 14</title>
+<title>Test 15</title>
 <meta charset="utf-8">
 <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -180,6 +180,34 @@ function initMap()
 	shape.setMap(map);
 	shape.addListener('click', showPolyInfo);
 
+
+	var cpos = new google.maps.LatLng(markers[0].lat, markers[0].lng);
+	var size = 	10 / getScale(cpos, map.getZoom());
+	marker2 = new google.maps.Marker({
+		position: cpos,
+		map: map,
+		clickable: false,
+		icon: 
+		{
+			anchor: new google.maps.Point(size/2, size/2),
+			scaledSize: new google.maps.Size(1000, 1000),
+			url: 'data:image/svg+xml,' + getSVG()
+		}
+	});
+	google.maps.event.addListener(map, 'zoom_changed', function() 
+	{
+		var ZoomZeroPixelSize = 8;
+		var maxPixel = 400;
+		var relPixel = Math.max(maxPixel, Math.round(ZoomZeroPixelSize * Math.pow(2, map.getZoom())));
+		marker2.setIcon({
+			url: marker2.getIcon().url,
+			size: null,
+			origin: null,
+			anchor: null,
+			scaledSize: new google.maps.Size(relPixel, relPixel)
+		});    		
+	});
+
 	document.getElementById('btnRotLL').onclick = function() 
 	{
 		rotatePolygon(shape, -10);
@@ -207,7 +235,8 @@ function createMarker(position, map)
 	var height = width;
 	
 	var icon = {
-		url: "https://openclipart.org/download/82549/blue-circle.svg",
+//		url: "https://openclipart.org/download/82549/blue-circle.svg",
+		url: 'data:image/svg+xml;charset=utf-8,' + getSVG(),
 		anchor: new google.maps.Point(width/2, height/2),
 		scaledSize: new google.maps.Size(width, height)
 	};
@@ -311,6 +340,45 @@ function getPolygonCenter(verts)
 		(minmax.latmin + minmax.latmax)/2,
 		(minmax.lngmin + minmax.lngmax)/2
 	);
+}
+
+function getSVG()
+{
+	var result = "<svg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>";
+	result += "  <g fill='red'>";
+	result += "    <path id='phaseOdd' d='M14 20 L17 20 L17 25 L14 25 z' />";
+	result += "  </g>";
+	result += "  <g fill='green'>";
+	result += "    <path id='phaseEven' d='M17 20 L20 20 L20 30 L17 30 z' />";
+	result += "  </g>";
+	result += "  <g fill='red' transform='rotate(90 15 15)'>";
+	result += "    <use xlink:href='#phaseOdd' />";
+	result += "    <use xlink:href='#phaseEven' />";
+	result += "  </g>";
+	result += "  <g fill='red' transform='rotate(-90 15 15)'>";
+	result += "    <use xlink:href='#phaseOdd' />";
+	result += "    <use xlink:href='#phaseEven' />";
+	result += "  </g>";
+	result += "  <g fill='red' transform='rotate(180 15 15)'>";
+	result += "    <use xlink:href='#phaseOdd' />";
+	result += "    <use xlink:href='#phaseEven' />";
+	result += "  </g>";
+	result += "</svg>";
+	return encodeURIComponent(result).replace(/%[\dA-F]{2}/g, function(match)
+	{
+		switch (match)
+		{
+			case '%20': return ' ';
+			case '%3D': return '=';
+			case '%3A': return ':';
+			case '%2F': return '/';
+			default: return match.toLowerCase();
+		}
+	});
+}
+function encodeSVG(svg)
+{
+	var result = svg
 }
 
 // ]]></script>

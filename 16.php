@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Test 14</title>
+<title>Test 16</title>
 <meta charset="utf-8">
 <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -46,10 +46,10 @@ html, body {
 <body>
 <div id="map"></div>
 <div id="mpanel">
-	<button type="button" id="btnRotLL" class="btn btn-secondary">&lt;&lt;</button>
-	<button type="button" id="btnRotL" class="btn btn-secondary">&lt;</button>
-	<button type="button" id="btnRotR" class="btn btn-secondary">&gt;</button>
-	<button type="button" id="btnRotRR" class="btn btn-secondary">&gt;&gt;</button>
+	<button type="button" id="btnRotLL" class="btn btn-secondary" title="rotate left 10">&lt;&lt;</button>
+	<button type="button" id="btnRotL" class="btn btn-secondary" title="rotate left 10">&lt;</button>
+	<button type="button" id="btnRotR" class="btn btn-secondary" title="rotate left 10">&gt;</button>
+	<button type="button" id="btnRotRR" class="btn btn-secondary" title="rotate right 10">&gt;&gt;</button>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
@@ -139,10 +139,10 @@ function initMap()
 		})(marker, data);
 	}
 	
-	marker = createMarker(new google.maps.LatLng(markers[0].lat, markers[0].lng), map);
+	marker = createMarker(new google.maps.LatLng(markers[0].lat, markers[0].lng), map, 0);
 	google.maps.event.addListener(map, 'zoom_changed', function() {
 		marker.setMap(null);
-		marker = createMarker(marker.getPosition(),map);
+		marker = createMarker(marker.getPosition(), map, marker.rotangle);
 	});
 	
 	map.setCenter(latlngbounds.getCenter());
@@ -183,40 +183,49 @@ function initMap()
 	document.getElementById('btnRotLL').onclick = function() 
 	{
 		rotatePolygon(shape, -10);
+		marker = rotateMarker(marker, -10);
 	};
 	document.getElementById('btnRotL').onclick = function() 
 	{
 		rotatePolygon(shape, -2);
+		marker = rotateMarker(marker, -2);
 	};
 	document.getElementById('btnRotR').onclick = function() 
 	{
 		rotatePolygon(shape, 2);
+		marker = rotateMarker(marker, 2);
 	};
 	document.getElementById('btnRotRR').onclick = function() 
 	{
 		rotatePolygon(shape, 10);
+		marker = rotateMarker(marker, 10);
 	};
 	
 }
 
-function createMarker(position, map)
+function createMarker(position, map, angle=0)
 {
+	angle |= 0;
 	var zoom = map.getZoom();
 	var scale = getScale(position, zoom + 1); //meters per pixel
 	var width = 10 / scale; 
 	var height = width;
 	
 	var icon = {
-		url: "https://openclipart.org/download/82549/blue-circle.svg",
+//		url: "https://openclipart.org/download/82549/blue-circle.svg",
+		url: 'data:image/svg+xml;charset=utf-8,' + getSVG(angle),
 		anchor: new google.maps.Point(width/2, height/2),
+		rotation: angle,	// info - no affect
 		scaledSize: new google.maps.Size(width, height)
 	};
 	
-	return new google.maps.Marker({
+	var result = new google.maps.Marker({
 		position: position,
 		map: map,
 		icon: icon
 	});
+	result.rotangle = angle;
+	return result;
 }
 
 function getScale(latLng, zoom)
@@ -281,6 +290,17 @@ function rotatePolygon(polygon, angle)
 	updatePolyInfo(polygon);
 }
 
+function rotateMarker(targetMarker, angle)
+{
+	targetMarker.setMap(null);
+	targetMarker.rotangle |= 0;
+	targetMarker.rotangle += angle;
+	var result = createMarker(targetMarker.getPosition(), map, targetMarker.rotangle);
+	delete targetMaker;
+	return result;
+}
+
+
 function rotatePoint(point, origin, angle) 
 {
 	var angleRad = angle * Math.PI / 180.0;
@@ -311,6 +331,44 @@ function getPolygonCenter(verts)
 		(minmax.latmin + minmax.latmax)/2,
 		(minmax.lngmin + minmax.lngmax)/2
 	);
+}
+
+function getSVG(rotangle=0)
+{
+	rotangle |= 0;
+	var result = "<svg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>";
+	result += "  <g transform='rotate(" + rotangle + ", 15, 15)'>";
+	result += "    <g fill='red'>";
+	result += "      <path id='phaseOdd' d='M14 20 L17 20 L17 25 L14 25 z' />";
+	result += "    </g>";
+	result += "    <g fill='green'>";
+	result += "      <path id='phaseEven' d='M17 20 L20 20 L20 30 L17 30 z' />";
+	result += "    </g>";
+	result += "      <g fill='red' transform='rotate(90 15 15)'>";
+	result += "      <use xlink:href='#phaseOdd' />";
+	result += "      <use xlink:href='#phaseEven' />";
+	result += "    </g>";
+	result += "    <g fill='red' transform='rotate(-90 15 15)'>";
+	result += "      <use xlink:href='#phaseOdd' />";
+	result += "      <use xlink:href='#phaseEven' />";
+	result += "    </g>";
+	result += "    <g fill='red' transform='rotate(180 15 15)'>";
+	result += "      <use xlink:href='#phaseOdd' />";
+	result += "      <use xlink:href='#phaseEven' />";
+	result += "    </g>";
+	result += "  </g>";
+	result += "</svg>";
+	return encodeURIComponent(result).replace(/%[\dA-F]{2}/g, function(match)
+	{
+		switch (match)
+		{
+			case '%20': return ' ';
+			case '%3D': return '=';
+			case '%3A': return ':';
+			case '%2F': return '/';
+			default: return match.toLowerCase();
+		}
+	});
 }
 
 // ]]></script>

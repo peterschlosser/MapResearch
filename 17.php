@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Test 14</title>
+<title>Test 17</title>
 <meta charset="utf-8">
 <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
 <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
@@ -46,10 +46,15 @@ html, body {
 <body>
 <div id="map"></div>
 <div id="mpanel">
-	<button type="button" id="btnRotLL" class="btn btn-secondary">&lt;&lt;</button>
-	<button type="button" id="btnRotL" class="btn btn-secondary">&lt;</button>
-	<button type="button" id="btnRotR" class="btn btn-secondary">&gt;</button>
-	<button type="button" id="btnRotRR" class="btn btn-secondary">&gt;&gt;</button>
+	<button type="button" id="btnRotLL" class="btn btn-secondary" title="rotate left 10">&lt;&lt;</button>
+	<button type="button" id="btnRotL" class="btn btn-secondary" title="rotate left 2">&lt;</button>
+	<button type="button" id="btnRotR" class="btn btn-secondary" title="rotate right 2">&gt;</button>
+	<button type="button" id="btnRotRR" class="btn btn-secondary" title="rotate right 10">&gt;&gt;</button>
+
+	<button type="button" id="btnScaleUp" class="btn btn-secondary" title="rotate left 10">&lt;&lt;</button>
+	<button type="button" id="btnScaleL" class="btn btn-secondary" title="rotate left 2">&lt;</button>
+	<button type="button" id="btnScaleR" class="btn btn-secondary" title="rotate right 2">&gt;</button>
+	<button type="button" id="btnScaleRR" class="btn btn-secondary" title="rotate right 10">&gt;&gt;</button>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
@@ -139,10 +144,10 @@ function initMap()
 		})(marker, data);
 	}
 	
-	marker = createMarker(new google.maps.LatLng(markers[0].lat, markers[0].lng), map);
+	marker = createMarker(new google.maps.LatLng(markers[0].lat, markers[0].lng), map, 0);
 	google.maps.event.addListener(map, 'zoom_changed', function() {
 		marker.setMap(null);
-		marker = createMarker(marker.getPosition(),map);
+		marker = createMarker(marker.getPosition(), map, marker.rotangle);
 	});
 	
 	map.setCenter(latlngbounds.getCenter());
@@ -183,40 +188,49 @@ function initMap()
 	document.getElementById('btnRotLL').onclick = function() 
 	{
 		rotatePolygon(shape, -10);
+		marker = rotateMarker(marker, -10);
 	};
 	document.getElementById('btnRotL').onclick = function() 
 	{
 		rotatePolygon(shape, -2);
+		marker = rotateMarker(marker, -2);
 	};
 	document.getElementById('btnRotR').onclick = function() 
 	{
 		rotatePolygon(shape, 2);
+		marker = rotateMarker(marker, 2);
 	};
 	document.getElementById('btnRotRR').onclick = function() 
 	{
 		rotatePolygon(shape, 10);
+		marker = rotateMarker(marker, 10);
 	};
 	
 }
 
-function createMarker(position, map)
+function createMarker(position, map, angle=0)
 {
+	angle |= 0;
 	var zoom = map.getZoom();
 	var scale = getScale(position, zoom + 1); //meters per pixel
 	var width = 10 / scale; 
 	var height = width;
 	
 	var icon = {
-		url: "https://openclipart.org/download/82549/blue-circle.svg",
+//		url: "https://openclipart.org/download/82549/blue-circle.svg",
+		url: 'data:image/svg+xml;charset=utf-8,' + getSVG(angle, "GYRRRRRR"),
 		anchor: new google.maps.Point(width/2, height/2),
+		rotation: angle,	// info - no affect
 		scaledSize: new google.maps.Size(width, height)
 	};
 	
-	return new google.maps.Marker({
+	var result = new google.maps.Marker({
 		position: position,
 		map: map,
 		icon: icon
 	});
+	result.rotangle = angle;
+	return result;
 }
 
 function getScale(latLng, zoom)
@@ -281,6 +295,17 @@ function rotatePolygon(polygon, angle)
 	updatePolyInfo(polygon);
 }
 
+function rotateMarker(targetMarker, angle)
+{
+	targetMarker.setMap(null);
+	targetMarker.rotangle |= 0;
+	targetMarker.rotangle += angle;
+	var result = createMarker(targetMarker.getPosition(), map, targetMarker.rotangle);
+	delete targetMaker;
+	return result;
+}
+
+
 function rotatePoint(point, origin, angle) 
 {
 	var angleRad = angle * Math.PI / 180.0;
@@ -312,6 +337,141 @@ function getPolygonCenter(verts)
 		(minmax.lngmin + minmax.lngmax)/2
 	);
 }
+
+var svgObject = [
+	/* all off */
+	"M14 20 z",
+	/* rfu */
+	"",
+	/* Phase Odd (1,3,5,7)  Other */
+	"M14 20 L17 20 L17 25 L14 25 z",
+	/* Phase Odd (1,3,5,7)  Green */
+	"M14 20 C14 18 14 14 10 14 L10 10 C16 10 17 14 17 20 L17 30 L14 30 Z",
+	/* Phase Even (2,4,6,8)  Other */
+	"M17 20 L20 20 L20 30 L17 30 z",
+	/* Phase Even (2,4,6,8)  Green */
+	"M17 20 L17 10 L20 10 L20 30 L17 30 z",
+];
+var PhaseKey = { "Off":0, "RFU":1, "O":2, "OG":3, "E": 4, "EG": 5 };
+Object.freeze(PhaseKey);
+var PhaseLink = { 'E': false, 'EG': false, 'O': false, 'OG': false };
+function getSVGObject(key)
+{
+	var id = "";
+	var path = "";
+	switch (key)
+	{
+		default:
+			id = "off" + key;
+			path = svgObject[PhaseKey.Off];
+			break;
+		case PhaseKey.E:
+			id = "phe";
+			path = svgObject[PhaseKey.E];
+			break;
+		case PhaseKey.EG:
+			id = "pheg";
+			path = svgObject[PhaseKey.EG];
+			break;
+		case PhaseKey.O:
+			id = "pho";
+			path = svgObject[PhaseKey.O];
+			break;
+		case PhaseKey.OG:
+			id = "phog";
+			path = svgObject[PhaseKey.OG];
+			break;
+	}
+	if (PhaseLink[key])
+	{
+		return "<use xlink:href='#" + id + "' />";
+	}
+	PhaseLink[key] = true;
+	return "<path id='" + id + "' d='" + path + "' />";
+}
+
+function svgGetColor(key)
+{
+	key += "";
+	key.toUpperCase();
+	switch(key)
+	{
+		default:	return "none";
+		case "G":	return "green";
+		case "R":	return "red";
+		case "Y":	return "yellow";
+	}
+}
+
+
+function getSVG(rotangle=0, key="")
+{
+	rotangle |= 0;
+	key = "         ".substr(0, 9 - Math.min(8, key.length)).concat(key.toUpperCase());
+
+	PhaseLink[PhaseKey.O] = false;
+	PhaseLink[PhaseKey.OG] = false;
+	PhaseLink[PhaseKey.E] = false;
+	PhaseLink[PhaseKey.EG] = false;
+
+	var result = "<svg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>";
+	result += "  <g transform='rotate(" + rotangle + ", 15, 15)'>";
+
+	result += "    <g fill='" + svgGetColor(key[1]) + "'>";
+	result += "      " + (key[1] == "G" ? getSVGObject(PhaseKey.OG) : getSVGObject(PhaseKey.O));
+	if (key[1] != key[2])
+	{
+		result += "    </g>";
+		result += "    <g fill='" + svgGetColor(key[2]) + "'>";
+	}
+	result += "      " + (key[2] == "G" ? getSVGObject(PhaseKey.EG) : getSVGObject(PhaseKey.E));
+	result += "    </g>";
+
+	result += "    <g fill='" + svgGetColor(key[3]) + "' transform='rotate(90 15 15)'>";
+	result += "      " + (key[3] == "G" ? getSVGObject(PhaseKey.OG) : getSVGObject(PhaseKey.O));
+	if (key[3] != key[4])
+	{
+		result += "    </g>";
+		result += "    <g fill='" + svgGetColor(key[4]) + "'>";
+	}
+	result += "      " + (key[4] == "G" ? getSVGObject(PhaseKey.EG) : getSVGObject(PhaseKey.E));
+	result += "    </g>";
+
+	result += "    <g fill='" + svgGetColor(key[5]) + "' transform='rotate(180 15 15)'>";
+	result += "      " + (key[5] == "G" ? getSVGObject(PhaseKey.OG) : getSVGObject(PhaseKey.O));
+	if (key[5] != key[6])
+	{
+		result += "    </g>";
+		result += "    <g fill='" + svgGetColor(key[6]) + "'>";
+	}
+	result += "      " + (key[6] == "G" ? getSVGObject(PhaseKey.EG) : getSVGObject(PhaseKey.E));
+	result += "    </g>";
+
+	result += "    <g fill='" + svgGetColor(key[7]) + "' transform='rotate(-90 15 15)'>";
+	result += "      " + (key[7] == "G" ? getSVGObject(PhaseKey.OG) : getSVGObject(PhaseKey.O));
+	if (key[7] != key[8])
+	{
+		result += "    </g>";
+		result += "    <g fill='" + svgGetColor(key[8]) + "'>";
+	}
+	result += "      " + (key[8] == "G" ? getSVGObject(PhaseKey.EG) : getSVGObject(PhaseKey.E));
+	result += "    </g>";
+	result += "  </g>";
+	result += "</svg>";
+
+	return encodeURIComponent(result).replace(/%[\dA-F]{2}/g, function(match)
+	{
+		switch (match)
+		{
+			case '%20': return ' ';
+			case '%3D': return '=';
+			case '%3A': return ':';
+			case '%2F': return '/';
+			default: return match.toLowerCase();
+		}
+	});
+}
+
 
 // ]]></script>
 <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmXOTrEX3FkSkDLLtIzw3Gqc5e2tDFmyI&callback=initMap" type="text/javascript"></script>
