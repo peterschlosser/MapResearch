@@ -276,6 +276,11 @@ function setup_poi(poi)
 	})(poi.markerMarker, poi);
 	
 	// create marker data image
+	if (typeof poi.uiData == 'undefined' || poi.uiData == null || poi.uiData == "")
+	{
+		console.log("setup_poi: bad poi.uiData");
+//		poi.uiData = "BBYYBBYY";
+	}
 	poi.uiMarker = createMarker(new google.maps.LatLng(poi.uiLat, poi.uiLng), map, poi.uiData, poi.uiHeading, poi.uiScale);
 }
 
@@ -283,6 +288,12 @@ function setup_poi(poi)
 // creates UI image icon as Google Maps Marker (uiMarker)
 function createMarker(position, map, status = "RRGGGGGG", angle=0, scale=1.0)
 {
+	if (typeof status == 'undefined' || status == null || status == "")
+	{
+		console.log("createMarker: bad status");
+//		status = "BBYYBBYY";
+	}
+
 	angle |= 0;
 	var zoom = map.getZoom();
 	var mscale = getScale(position, zoom + 1); //meters per pixel
@@ -591,6 +602,11 @@ function svgGetColor(key)
 //	G=green, Y=yellow, R=red, *=hidden
 function getSVG(key="RRRRRRRR", angle=0)
 {
+	if (typeof key == 'undefined' || key == null || key == "")
+	{
+		console.log("getSVG: bad key");
+		key = "BBYYBBYY";
+	}
 	key = "         ".substr(0, 9 - Math.min(8, key.length)).concat(key.toUpperCase());
 	angle = angle || 0;
 
