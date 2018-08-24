@@ -632,7 +632,6 @@ function rotateMarker(targetMarker, angle)
 	targetMarker.uiangle = targetMarker.uiangle || 0;
 	targetMarker.uiangle += angle;
 	var result = recreateMarker(targetMarker);
-console.log(typeof result);	
 	updateMarkerInfo(result);
 	return result;
 }
